@@ -8,19 +8,21 @@ import java.util.Scanner;
 public class Main {
     private static XInARowGame game;
     private static XInARowGameAi ai;
-    private static byte currentPlayer;
 
     public static void main(String[] args) {
         Scanner s = new Scanner(System.in);
         while (true) {
-            if (game != null && game.checkDraw()) {
+            if (game != null)
+                System.out.println("game.currentPlayer=" + game.getCurrentPlayer());
+
+            if (game != null && game.isDraw()) {
                 game.print();
                 System.out.println("ничья!");
                 game = null;
                 continue;
             }
 
-            if (game != null && currentPlayer == XInARowGame.P2) {
+            if (game != null && game.getCurrentPlayer() == 2) {
                 handleAIMove();
                 continue;
             }
@@ -55,15 +57,14 @@ public class Main {
 
     static void handleAIMove() {
         try {
-            ai.makeMove(XInARowGame.P2, game);
-            if (game.checkPlayerWon(XInARowGame.P2)) {
+            ai.makeMove(game);
+            if (game.checkPlayerWon(2)) {
                 game.print();
                 System.out.println("вы проиграли!");
                 game = null;
                 return;
             }
             game.print();
-            currentPlayer = XInARowGame.P1;
         } catch(IllegalArgumentException e) {
             game.print();
             System.out.println("AI не смог сделать ход: " + e.toString());
@@ -85,16 +86,14 @@ public class Main {
         int x = Integer.parseInt(cmd[1]);
         int y = Integer.parseInt(cmd[2]);
         try {
-            if (!game.move(currentPlayer, x, y)) {
+            if (!game.move(x, y)) {
                 System.out.println("некорректный ход!");
                 return;
             }
             game.print();
-            if (game.checkPlayerWon(XInARowGame.P1)) {
+            if (game.checkPlayerWon(1)) {
                 System.out.println("вы выиграли!");
                 game = null;
-            } else {
-                currentPlayer = XInARowGame.P2;
             }
         } catch (IllegalArgumentException e) {
             System.out.println("некооректный ход: " + e);
@@ -129,7 +128,6 @@ public class Main {
             return;
         try {
             game = new XInARowGame(fieldSize, winLength);
-            currentPlayer = XInARowGame.P1;
             game.print();
         } catch (IllegalArgumentException e) {
             System.out.println("не удалось создать игру: " + e);
