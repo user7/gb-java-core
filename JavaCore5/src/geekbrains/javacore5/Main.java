@@ -1,12 +1,12 @@
 package geekbrains.javacore5;
 
 class Employee {
-    private String name;
-    private String position;
-    private String email;
-    private String phone;
-    private long salary;
-    private int age;
+    private final String name;
+    private final String position;
+    private final String email;
+    private final String phone;
+    private final long salary;
+    private final int age;
 
     public int getAge() {
         return age;
@@ -41,9 +41,9 @@ public class Main {
         employees[2] = new Employee("Макс", "Охранник", "maxik@mail.ru", "+79990000002", 34000, 21);
         employees[3] = new Employee("Каха", "Рекрутер", "kaha1@mail.ru", "+79990000003", 35000, 24);
         employees[4] = new Employee("Марк", "Юрист", "mark@mail.ru", "+79990000004", 199000, 55);
-        for (int i = 0; i < employees.length; i++) {
-            if (employees[i].getAge() > 40) {
-                employees[i].print();
+        for (Employee employee : employees) {
+            if (employee.getAge() > 40) {
+                employee.print();
                 System.out.println("--");
             }
         }
