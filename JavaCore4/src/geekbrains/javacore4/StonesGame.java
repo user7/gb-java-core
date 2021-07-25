@@ -1,8 +1,9 @@
 package geekbrains.javacore4;
 
 import java.util.Arrays;
+import java.util.HashMap;
 
-class XInARowGame {
+class StonesGame {
     private byte[][] field;
     private int maxX;
     private int maxY;
@@ -13,9 +14,15 @@ class XInARowGame {
     private int winnerPlayer = 0;
     private int lastMoveX = -1;
     private int lastMoveY = -1;
+    private boolean[][] trace;
 
     private final static char[] mark = { '_', 'X', 'O' };
-    private final static int allDirections[][] = new int[][] {{1, 0}, {1, 1}, {0, 1}, {-1, 1}, {-1, 0}, {-1, -1}, {0, -1}, {1, -1}};
+    private final static int directions[][] = new int[][] {{1, 0}, {1, 1}, {0, 1}, {-1, 1}};
+
+    public void concede() {
+        gameOver = true;
+        winnerPlayer = 3 - currentPlayer;
+    }
 
     public boolean isGameOver() {
         return gameOver;
@@ -45,7 +52,7 @@ class XInARowGame {
         return winLength;
     }
 
-    XInARowGame(int fieldSize, int winLength) {
+    StonesGame(int fieldSize, int winLength) {
         if (fieldSize < 1)
             throw new IllegalArgumentException("размер поля должен быть положительным");
         if (winLength < 1)
@@ -60,19 +67,42 @@ class XInARowGame {
         this.winLength = winLength;
     }
 
+    private static final String ANSI_GREEN = "\u001B[32m";
+    private static final String ANSI_YELLOW = "\u001B[33m";
+    private static final String ANSI_RESET = "\u001B[0m";
+
     // вывод поля на консоль
     public void print() {
         System.out.print(" ");
-        for (int i = 0; i < maxX; ++i) {
-            System.out.print(" " + (i % 10 + 1));
-        }
+        for (int x = 1; x <= maxX; ++x)
+            System.out.print(" " + ((x - 1) % 10 + 1));
         System.out.println("");
-        for (int i = 0; i < maxY; ++i) {
-            System.out.print(i % 10 + 1);
-            for (int j = 0; j < maxX; ++j)
-                System.out.print(" " + mark[field[i][j]]);
+        for (int y = 1; y <= maxY; ++y) {
+            System.out.print((y - 1) % 10 + 1);
+            for (int x = 1; x <= maxX; ++x) {
+                String pre = "";
+                String post = "";
+                if (x == lastMoveX && y == lastMoveY) {
+                    pre = ANSI_YELLOW;
+                    post = ANSI_RESET;
+                } else if (isGameOver() && trace != null && trace[y - 1][x - 1]) {
+                    pre = ANSI_GREEN;
+                    post = ANSI_RESET;
+                }
+                System.out.print(" " + pre + mark[at(x, y)] + post);
+            }
             System.out.println("");
         }
+
+        if (!isGameOver())
+            System.out.println("ход игрока " + currentPlayer + "(" + mark[currentPlayer] + ")");
+        else {
+            if (isDraw())
+                System.out.println("ничья!");
+            else
+                System.out.println("игрок " + currentPlayer + "(" + mark[currentPlayer] + ") выиграл!");
+        }
+        System.out.println("--");
     }
 
     // если ход корректный, то делает ход от имени currentPlayer,
@@ -84,33 +114,45 @@ class XInARowGame {
             return false; // некоррентный ход за пределы поля
         if (at(x, y) != 0)
             return false; // некоррентный ход, клетка занята
+
         setAt(x, y, currentPlayer);
-        for (int[] dir : allDirections)
-            if (checkPlayerWonRow(x, y, currentPlayer, dir)) {
-                winnerPlayer = currentPlayer;
-                return true; // корректный ход и победа currentPlayer
+        for (int[] d : directions) {
+            int lengthForward = runLength(x, y, currentPlayer, d[0], d[1]);
+            int lengthBackward = runLength(x, y, currentPlayer, -d[0], -d[1]);
+            if (lengthForward + lengthBackward >= winLength + 1) {
+                traceMark(x, y, d[0], d[1], lengthForward);
+                traceMark(x, y, -d[0], -d[1], lengthBackward);
+                gameOver = true;
+                winnerPlayer = currentPlayer; // победа currentPlayer
+                return true; // корректный ход
             }
+        }
         if (cellsUsed == maxX * maxY) {
             gameOver = true;
             winnerPlayer = 0; // ничья
         }
-        currentPlayer = 3 - currentPlayer; // 2 -> 1, 1 -> 2
-        return true;
+        currentPlayer = 3 - currentPlayer; // 2 <-> 1
+        return true; // корректный ход
     }
 
-    // проверяет выиграл ли игрок player
-    public boolean checkPlayerWon(int player) {
-        for (int x = 1; x <= maxX; ++x) {
-            for (int y = 1; y <= maxY; ++y) {
-                // достаточно просмотреть половину направлений из каждой точки, если где-то
-                // есть winLength камней в ряд, то этот ряд будет найден с одного из двух концов
-                for (int di = 0; di < allDirections.length / 2; ++di) {
-                    if (checkPlayerWonRow(x, y, player, allDirections[di]))
-                        return true;
-                }
-            }
+    private void traceMark(int x, int y, int dx, int dy, int length) {
+        if (trace == null)
+            trace = new boolean[maxX][maxY];
+        for ( ; length > 0; --length) {
+            trace[y - 1][x - 1] = true;
+            x += dx;
+            y += dy;
         }
-        return false;
+    }
+
+    private int runLength(int x, int y, int player, int dx, int dy) {
+        int length = 0;
+        while(1 <= x && x <= maxX && 1 <= y && y <= maxY && at(x, y) == player) {
+            length++;
+            x += dx;
+            y += dy;
+        }
+        return length;
     }
 
     public int at(int x, int y) {
@@ -123,24 +165,4 @@ class XInARowGame {
         lastMoveY = y;
         cellsUsed++;
     }
-
-    private boolean checkPlayerWonRow(int x, int y, int player, int[] dir) {
-        boolean win = true;
-        int step = 0;
-        if (x < 1 || x > maxX || y < 1 || y > maxY)
-            return false;
-        int endX = x + dir[0] * (winLength - 1);
-        int endY = y + dir[1] * (winLength - 1);
-        if (endX < 1 || endX > maxX || endY < 1 || endY > maxY)
-            return false;
-        do {
-            if (at(x, y) != player)
-                return false;
-            x += dir[0];
-            y += dir[1];
-            ++step;
-        } while (step < winLength);
-        return true;
-    }
-
 }

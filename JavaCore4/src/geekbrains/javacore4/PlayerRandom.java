@@ -3,9 +3,9 @@ package geekbrains.javacore4;
 import java.util.ArrayList;
 import java.util.Random;
 
-class AiRandom implements XInARowGameAi {
+class PlayerRandom implements StonesGamePlayer {
     @Override
-    public void makeMove(XInARowGame game) {
+    public void makeMove(StonesGame game) {
         ArrayList<int[]> possibleMoves = new ArrayList<>();
         for (int x = 1; x <= game.getMaxX(); ++x)
             for (int y = 1; y <= game.getMaxY(); ++y)

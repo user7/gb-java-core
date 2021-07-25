@@ -1,8 +1,8 @@
 package geekbrains.javacore4;
 
-class AiMinMax implements XInARowGameAi {
+class PlayerMinMax implements StonesGamePlayer {
     @Override
-    public void makeMove(XInARowGame game) {
+    public void makeMove(StonesGame game) {
         throw new UnsupportedOperationException("этот AI еще не реализован");
     }
 }

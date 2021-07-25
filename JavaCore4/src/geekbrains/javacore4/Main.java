@@ -1,33 +1,13 @@
 package geekbrains.javacore4;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Random;
 import java.util.Scanner;
 
 public class Main {
-    private static XInARowGame game;
-    private static XInARowGameAi ai;
 
     public static void main(String[] args) {
         Scanner s = new Scanner(System.in);
         while (true) {
-            if (game != null)
-                System.out.println("game.currentPlayer=" + game.getCurrentPlayer());
-
-            if (game != null && game.isDraw()) {
-                game.print();
-                System.out.println("ничья!");
-                game = null;
-                continue;
-            }
-
-            if (game != null && game.getCurrentPlayer() == 2) {
-                handleAIMove();
-                continue;
-            }
-
-            System.out.println("введите команду (q, n, m, ?):");
+            System.out.println("введите команду (?, q, n):");
             if (!s.hasNext())
                 break;
             String cmdLine = s.nextLine();
@@ -46,57 +26,7 @@ public class Main {
                 continue;
             }
 
-            if (cmd[0].matches("m(o(ve?)?)?")) {
-                handleMove(cmd);
-                continue;
-            }
-
             System.out.println("неизвестная команда: " + cmdLine);
-        }
-    }
-
-    static void handleAIMove() {
-        try {
-            ai.makeMove(game);
-            if (game.checkPlayerWon(2)) {
-                game.print();
-                System.out.println("вы проиграли!");
-                game = null;
-                return;
-            }
-            game.print();
-        } catch(IllegalArgumentException e) {
-            game.print();
-            System.out.println("AI не смог сделать ход: " + e.toString());
-            game = null;
-        }
-    }
-
-    static void handleMove(String[] cmd) {
-        if (game == null) {
-            System.out.println("нет активной игры, команда move не работает");
-            return;
-        }
-
-        if (cmd.length < 3) {
-            System.out.println("недостаточно параметров для move, должно быть move X Y");
-            return;
-        }
-
-        int x = Integer.parseInt(cmd[1]);
-        int y = Integer.parseInt(cmd[2]);
-        try {
-            if (!game.move(x, y)) {
-                System.out.println("некорректный ход!");
-                return;
-            }
-            game.print();
-            if (game.checkPlayerWon(1)) {
-                System.out.println("вы выиграли!");
-                game = null;
-            }
-        } catch (IllegalArgumentException e) {
-            System.out.println("некооректный ход: " + e);
         }
     }
 
@@ -109,40 +39,52 @@ public class Main {
         if (cmd.length > 2)
             winLength = Integer.parseInt(cmd[2]);
 
-        ai = new AiRandom();
-        if (cmd.length > 3) {
-            switch (cmd[3]) {
-                case "r":
-                    ai = new AiRandom();
-                    break;
-                case "mm":
-                    ai = new AiMinMax();
-                    break;
-                default:
-                    System.out.println("неизвестный тип AI: '" + cmd[3] + "'");
-                    ai = null;
-            }
-        }
-
-        if (ai == null)
+        StonesGamePlayer[] players = new StonesGamePlayer[]{parsePlayer(cmd, 3), parsePlayer(cmd, 4)};
+        if (players[0] == null || players[1] == null)
             return;
+
+        StonesGame game;
         try {
-            game = new XInARowGame(fieldSize, winLength);
-            game.print();
+            game = new StonesGame(fieldSize, winLength);
         } catch (IllegalArgumentException e) {
             System.out.println("не удалось создать игру: " + e);
             return;
+        }
+
+        playGame(game, players);
+    }
+
+    static void playGame(StonesGame game, StonesGamePlayer[] players) {
+        while (true) {
+            game.print();
+            if (game.isGameOver())
+                return;
+            players[game.getCurrentPlayer() - 1].makeMove(game);
+        }
+    }
+
+    static StonesGamePlayer parsePlayer(String[] cmd, int pos) {
+        String t = cmd.length > pos ? cmd[pos] : "r"; // по умолчанию играет random AI
+        switch (t) {
+            case "r": return new PlayerRandom();
+            case "h": return new PlayerHuman();
+            default:
+                System.out.println("неизвестный тип AI: '" + cmd[pos] + "'");
+                return null;
         }
     }
 
     static void printHelp() {
         System.out.println("Команды:");
-        System.out.println(" ?|h[elp]     - вывести это сообщение");
-        System.out.println(" q[uit]       - выход");
-        System.out.println(" n[ew] N W AI - новая игра NxN клеток, требуется W в ряд для победы, использовать один из AI:");
-        System.out.println("                r - random AI, случайные ходы");
-        System.out.println("                rd - random+density, случайный ход в зоне наибольшей плотности");
-        System.out.println("                mm - алгоритм minimax");
-        System.out.println(" m[ove] X Y   - сделать ход по координатам X, Y");
+        System.out.println(" ?|h[elp]          - вывести это сообщение");
+        System.out.println(" q[uit]            - выход");
+        System.out.println(" n[ew] N W P1 P2   - новая игра NxN клеток,");
+        System.out.println("                     требуется выстроить W камней в ряд для победы,");
+        System.out.println("                     P1 и P2 задают тип игроков 1 и 2 соответсвенно:");
+        System.out.println("                        h  - human, человек, управление с консоли");
+        System.out.println("                        r  - random, AI делающий случайные ходы");
+        System.out.println("");
+        System.out.println("    пример: n 3 3 h r - крестики-нолики, первый игрок человек, второй - рандомный AI");
+        System.out.println("    пример: n 4 3 h h - крестики-нолики на доске 4x4, два человека друг против друга");
     }
 }
