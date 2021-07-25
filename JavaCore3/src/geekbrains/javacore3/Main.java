@@ -6,7 +6,7 @@ import java.util.Scanner;
 public class Main {
 
     public static void main(String[] args) {
-        //task1();
+        task1();
         task2();
     }
 
@@ -32,10 +32,14 @@ public class Main {
                           "leak", "kiwi", "mango", "mushroom", "nut", "olive", "pea",
                           "peanut", "pear", "pepper", "pineapple", "pumpkin", "potato"};
         int r = new Random().nextInt(words.length);
+        int take = 1;
         String w = words[r];
         Scanner s = new Scanner(System.in);
+        System.out.println("Угадай английское слово, после каждой попытки будет показаны правильные буквы!");
         do {
+            System.out.println("Попытка " + take + ": ");
             String guess = s.next();
+            ++take;
             if (guess.equals(w)) {
                 System.out.println("Правильно!");
                 return;
