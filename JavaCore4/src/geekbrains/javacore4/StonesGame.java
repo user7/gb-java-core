@@ -14,10 +14,9 @@ class StonesGame {
     private int winnerPlayer = 0;
     private int lastMoveX = -1;
     private int lastMoveY = -1;
-    private boolean[][] trace;
 
-    private final static char[] mark = { '_', 'X', 'O' };
-    private final static int directions[][] = new int[][] {{1, 0}, {1, 1}, {0, 1}, {-1, 1}};
+    private final static char[] mark = {'_', 'X', 'O'};
+    private final static int directions[][] = new int[][]{{1, 0}, {1, 1}, {0, 1}, {-1, 1}};
 
     public void concede() {
         gameOver = true;
@@ -85,7 +84,7 @@ class StonesGame {
                 if (x == lastMoveX && y == lastMoveY) {
                     pre = ANSI_YELLOW;
                     post = ANSI_RESET;
-                } else if (isGameOver() && trace != null && trace[y - 1][x - 1]) {
+                } else if (isGameOver() && !isDraw() && checkWinAt(x, y)) {
                     pre = ANSI_GREEN;
                     post = ANSI_RESET;
                 }
@@ -114,40 +113,43 @@ class StonesGame {
             return false; // некоррентный ход за пределы поля
         if (at(x, y) != 0)
             return false; // некоррентный ход, клетка занята
+        //Main.d("move [" + mark[getCurrentPlayer()] + "] " + x + " " + y);
 
         setAt(x, y, currentPlayer);
-        for (int[] d : directions) {
-            int lengthForward = runLength(x, y, currentPlayer, d[0], d[1]);
-            int lengthBackward = runLength(x, y, currentPlayer, -d[0], -d[1]);
-            if (lengthForward + lengthBackward >= winLength + 1) {
-                traceMark(x, y, d[0], d[1], lengthForward);
-                traceMark(x, y, -d[0], -d[1], lengthBackward);
-                gameOver = true;
-                winnerPlayer = currentPlayer; // победа currentPlayer
-                return true; // корректный ход
-            }
-        }
-        if (cellsUsed == maxX * maxY) {
+        if (checkWinAt(x, y)) {
             gameOver = true;
-            winnerPlayer = 0; // ничья
+            winnerPlayer = currentPlayer;
         }
-        currentPlayer = 3 - currentPlayer; // 2 <-> 1
+        else
+            currentPlayer = 3 - currentPlayer; // 1 <-> 2
+        if (!gameOver && cellsUsed == maxX * maxY) { // никто не выиграл, но клетки пончились - ничья
+            gameOver = true;
+            winnerPlayer = 0;
+        }
         return true; // корректный ход
     }
 
-    private void traceMark(int x, int y, int dx, int dy, int length) {
-        if (trace == null)
-            trace = new boolean[maxX][maxY];
-        for ( ; length > 0; --length) {
-            trace[y - 1][x - 1] = true;
-            x += dx;
-            y += dy;
+    private boolean checkWinAt(int x, int y) {
+        for (int[] d : directions) {
+            int lengthForward = runLength(x, y, currentPlayer, d[0], d[1]);
+            int lengthBackward = runLength(x, y, currentPlayer, -d[0], -d[1]);
+            if (lengthForward + lengthBackward >= winLength + 1)
+                return true;
         }
+        return false;
+    }
+
+    public void undoMove(int x, int y) {
+        currentPlayer = at(x, y);
+        assert (currentPlayer != 0);
+        gameOver = false;
+        winnerPlayer = 0;
+        setAt(x, y, 0);
     }
 
     private int runLength(int x, int y, int player, int dx, int dy) {
         int length = 0;
-        while(1 <= x && x <= maxX && 1 <= y && y <= maxY && at(x, y) == player) {
+        while (1 <= x && x <= maxX && 1 <= y && y <= maxY && at(x, y) == player) {
             length++;
             x += dx;
             y += dy;
@@ -163,6 +165,9 @@ class StonesGame {
         field[y - 1][x - 1] = (byte) player;
         lastMoveX = x;
         lastMoveY = y;
-        cellsUsed++;
+        if (player == 0)
+            cellsUsed--;
+        else
+            cellsUsed++;
     }
 }

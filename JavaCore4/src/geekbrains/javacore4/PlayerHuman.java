@@ -12,8 +12,10 @@ public class PlayerHuman implements StonesGamePlayer {
         while (true) {
             String line = s.nextLine();
             System.out.println("q - сдаться, x y - ход");
-            if (line.matches("q(u(it?)?)?"))
+            if (line.matches("q(u(it?)?)?")) {
                 game.concede();
+                return;
+            }
             String[] xy = line.split(" +");
             if (xy.length != 2) {
                 System.out.println("требуется ровно два целочисленных аргумента, x и y");
