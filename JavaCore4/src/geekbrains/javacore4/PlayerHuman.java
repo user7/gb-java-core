@@ -1,6 +1,5 @@
 package geekbrains.javacore4;
 
-import javax.swing.*;
 import java.util.Scanner;
 
 // игрок-человек

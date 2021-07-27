@@ -4,11 +4,6 @@ import java.util.Scanner;
 
 public class Main {
 
-    public static void d(String s) {
-        if (true)
-            System.out.println(s);
-    }
-
     public static void main(String[] args) {
         Scanner s = new Scanner(System.in);
         while (true) {
@@ -39,7 +34,7 @@ public class Main {
         return cmd.length > i ? Integer.parseInt(cmd[i]) : defaultValue;
     }
 
-    static void handleNewGame(String cmd[]) {
+    static void handleNewGame(String[] cmd) {
         int fieldSize = parseInt(3, cmd, 1);
         int winLength = parseInt(3, cmd, 2);
 
@@ -95,7 +90,7 @@ public class Main {
         System.out.println("                        h  - human, человек, управление с консоли");
         System.out.println("                        r  - random, AI делающий случайные ходы");
         System.out.println("                     X если больше 1, то провести X матчей и показать сумму");
-        System.out.println("");
+        System.out.println();
         System.out.println("    пример: n 3 3 h r - крестики-нолики, первый игрок человек, второй - рандомный AI");
         System.out.println("    пример: n 4 3 h h - крестики-нолики на доске 4x4, два человека друг против друга");
     }

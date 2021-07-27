@@ -1,15 +1,12 @@
 package geekbrains.javacore4;
 
-import java.util.ArrayList;
-
 class PlayerMinMax implements StonesGamePlayer {
     @Override
     public void makeMove(StonesGame game) {
         minimax(true, game.getCurrentPlayer(), game);
     }
 
-    record Move(int x, int y) {
-    }
+    record Move(int x, int y) {}
 
     private int minimax(boolean needMakeMove, int player, StonesGame game) {
         if (game.isGameOver())
@@ -42,7 +39,7 @@ class PlayerMinMax implements StonesGamePlayer {
                 Move m = lossDrawWin[score + 1];
                 if (m != null) {
                     game.move(m.x, m.y);
-                    return score; // needMakeMove = true только в наш ход, значи лучший найденый ход задает score
+                    return score; // needMakeMove = true только в наш ход, значит лучший найденый ход задает score
                 }
             }
             assert (false); // не может чтобы не было ни победного, ни ничейного, ни проигрышного хода

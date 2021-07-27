@@ -1,13 +1,12 @@
 package geekbrains.javacore4;
 
 import java.util.Arrays;
-import java.util.HashMap;
 
 class StonesGame {
-    private byte[][] field;
-    private int maxX;
-    private int maxY;
-    private int winLength;
+    private final byte[][] field;
+    private final int maxX;
+    private final int maxY;
+    private final int winLength;
     private int cellsUsed = 0;
     private boolean gameOver = false;
     private int currentPlayer = 1;
@@ -16,7 +15,7 @@ class StonesGame {
     private int lastMoveY = -1;
 
     private final static char[] mark = {'_', 'X', 'O'};
-    private final static int directions[][] = new int[][]{{1, 0}, {1, 1}, {0, 1}, {-1, 1}};
+    private final static int[][] directions = new int[][]{{1, 0}, {1, 1}, {0, 1}, {-1, 1}};
 
     public void concede() {
         gameOver = true;
@@ -47,10 +46,6 @@ class StonesGame {
         return maxY;
     }
 
-    public int getWinLength() {
-        return winLength;
-    }
-
     StonesGame(int fieldSize, int winLength) {
         if (fieldSize < 1)
             throw new IllegalArgumentException("размер поля должен быть положительным");
@@ -75,7 +70,7 @@ class StonesGame {
         System.out.print(" ");
         for (int x = 1; x <= maxX; ++x)
             System.out.print(" " + ((x - 1) % 10 + 1));
-        System.out.println("");
+        System.out.println();
         for (int y = 1; y <= maxY; ++y) {
             System.out.print((y - 1) % 10 + 1);
             for (int x = 1; x <= maxX; ++x) {
@@ -90,7 +85,7 @@ class StonesGame {
                 }
                 System.out.print(" " + pre + mark[at(x, y)] + post);
             }
-            System.out.println("");
+            System.out.println();
         }
 
         if (!isGameOver())
@@ -113,7 +108,6 @@ class StonesGame {
             return false; // некоррентный ход за пределы поля
         if (at(x, y) != 0)
             return false; // некоррентный ход, клетка занята
-        //Main.d("move [" + mark[getCurrentPlayer()] + "] " + x + " " + y);
 
         setAt(x, y, currentPlayer);
         if (checkWinAt(x, y)) {
