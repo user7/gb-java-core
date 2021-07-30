@@ -38,16 +38,16 @@ public class Main {
         int fieldSize = parseInt(3, cmd, 1);
         int winLength = parseInt(3, cmd, 2);
 
-        StonesGamePlayer[] players = new StonesGamePlayer[]{parsePlayer(cmd, 3), parsePlayer(cmd, 4)};
+        Player[] players = new Player[]{parsePlayer(cmd, 3), parsePlayer(cmd, 4)};
         if (players[0] == null || players[1] == null)
             return;
 
         int matches = parseInt(1, cmd, 5);
         int[] winner = new int[3];
         for (int i = 0; i < matches; ++i) {
-            StonesGame game;
+            Game game;
             try {
-                game = new StonesGame(fieldSize, winLength);
+                game = new Game(fieldSize, winLength);
             } catch (IllegalArgumentException e) {
                 System.out.println("не удалось создать игру: " + e);
                 return;
@@ -59,7 +59,7 @@ public class Main {
             System.out.println("Счёт " + winner[1] + ":" + winner[2] + ", всего матчей " + matches);
     }
 
-    static void playGame(StonesGame game, StonesGamePlayer[] players) {
+    static void playGame(Game game, Player[] players) {
         while (true) {
             game.print();
             if (game.isGameOver())
@@ -68,7 +68,7 @@ public class Main {
         }
     }
 
-    static StonesGamePlayer parsePlayer(String[] cmd, int pos) {
+    static Player parsePlayer(String[] cmd, int pos) {
         String t = cmd.length > pos ? cmd[pos] : "r"; // по умолчанию играет random AI
         switch (t) {
             case "r": return new PlayerRandom();
@@ -89,9 +89,11 @@ public class Main {
         System.out.println("                     P1 и P2 задают тип игроков 1 и 2 соответсвенно:");
         System.out.println("                        h  - human, человек, управление с консоли");
         System.out.println("                        r  - random, AI делающий случайные ходы");
+        System.out.println("                        m  - AI реализующий алгоритм минимакс (работает медленно)");
         System.out.println("                     X если больше 1, то провести X матчей и показать сумму");
         System.out.println();
         System.out.println("    пример: n 3 3 h r - крестики-нолики, первый игрок человек, второй - рандомный AI");
         System.out.println("    пример: n 4 3 h h - крестики-нолики на доске 4x4, два человека друг против друга");
+        System.out.println("    пример: n 3 3 r m - крестики-нолики на доске 3x3, рандомный AI против минимакса");
     }
 }

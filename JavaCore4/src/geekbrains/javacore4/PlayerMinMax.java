@@ -1,14 +1,14 @@
 package geekbrains.javacore4;
 
-class PlayerMinMax implements StonesGamePlayer {
+class PlayerMinMax implements Player {
     @Override
-    public void makeMove(StonesGame game) {
+    public void makeMove(Game game) {
         minimax(true, game.getCurrentPlayer(), game);
     }
 
     record Move(int x, int y) {}
 
-    private int minimax(boolean needMakeMove, int player, StonesGame game) {
+    private int minimax(boolean needMakeMove, int player, Game game) {
         if (game.isGameOver())
             return game.isDraw() ? 0 : game.getWinnerPlayer() == player ? 1 : -1;
 

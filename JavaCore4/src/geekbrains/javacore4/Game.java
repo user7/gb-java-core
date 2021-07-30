@@ -2,7 +2,7 @@ package geekbrains.javacore4;
 
 import java.util.Arrays;
 
-class StonesGame {
+class Game {
     private final byte[][] field;
     private final int maxX;
     private final int maxY;
@@ -46,7 +46,7 @@ class StonesGame {
         return maxY;
     }
 
-    StonesGame(int fieldSize, int winLength) {
+    Game(int fieldSize, int winLength) {
         if (fieldSize < 1)
             throw new IllegalArgumentException("размер поля должен быть положительным");
         if (winLength < 1)
@@ -116,6 +116,7 @@ class StonesGame {
         }
         else
             currentPlayer = 3 - currentPlayer; // 1 <-> 2
+
         if (!gameOver && cellsUsed == maxX * maxY) { // никто не выиграл, но клетки пончились - ничья
             gameOver = true;
             winnerPlayer = 0;

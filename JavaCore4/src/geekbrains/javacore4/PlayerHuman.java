@@ -3,11 +3,11 @@ package geekbrains.javacore4;
 import java.util.Scanner;
 
 // игрок-человек
-public class PlayerHuman implements StonesGamePlayer {
+public class PlayerHuman implements Player {
     Scanner s = new Scanner(System.in);
 
     @Override
-    public void makeMove(StonesGame game) {
+    public void makeMove(Game game) {
         while (true) {
             String line = s.nextLine();
             System.out.println("q - сдаться, x y - ход");
