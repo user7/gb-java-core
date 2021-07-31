@@ -15,6 +15,7 @@ public class Main {
     }
 
     public static void task1() {
+        System.out.println("\n= task1");
         int[] a = new int[] {1, 1, 0, 0, 1, 0, 1, 1, 0, 0};
         for (int i = 0; i < a.length; ++i) {
             a[i] = 1 - a[i];
@@ -23,6 +24,7 @@ public class Main {
     }
 
     public static void task2() {
+        System.out.println("\n= task2");
         int[] a = new int[8];
         for (int i = 0; i < a.length; ++i) {
             a[i] = i * 3;
@@ -31,6 +33,7 @@ public class Main {
     }
 
     public static void task3() {
+        System.out.println("\n= task3");
         int[] a = new int[] {1, 5, 3, 2, 11, 4, 5, 2, 4, 8, 9, 1};
         for (int i = 0; i < a.length; ++i) {
             if (a[i] < 6)
@@ -41,14 +44,18 @@ public class Main {
 
 
     public static void task4() {
+        System.out.println("\n= task4");
         int[][] a = new int[12][12];
-        for(int i = 0; i < a.length; ++i)
+        for(int i = 0; i < a.length; ++i) {
             a[i][i] = 1;
+            a[a.length - 1 - i][i] = 1;
+        }
         for(int i = 0; i < a.length; ++i)
             System.out.println(Arrays.toString(a[i]));
     }
 
     public static void task5() {
+        System.out.println("\n= task5");
         int[] a = new int[] {1, 5, 3, 2, 11, 4, 5, 2, 4, 8, 9, 1};
         int min = a[0];
         int max = a[0];
@@ -61,7 +68,7 @@ public class Main {
         System.out.println("min=" + min + " max=" + max);
     }
 
-    public static boolean hasEqualSumBisection(int[] a) {
+    public static boolean checkBalanced(int[] a) {
         int[] sumBelowInc = new int[a.length];
         int[] sumAbove = new int[a.length];
         int sum;
@@ -71,7 +78,7 @@ public class Main {
             sumBelowInc[i] = sum;
         }
         sum = 0;
-        for (int i = a.length - 1; i > 0; --i) {
+        for (int i = a.length - 1; i >= 0; --i) {
             sumAbove[i] = sum;
             sum += a[i];
         }
@@ -81,9 +88,31 @@ public class Main {
         return false;
     }
 
+    public static boolean checkBalancedSinglePass(int[] a) {
+        int i = 0;
+        int j = a.length - 1;
+        int sumLow = 0;
+        int sumHigh = 0;
+        while (i <= j) {
+            if (sumLow < sumHigh)
+                sumLow += a[i++];
+            else
+                sumHigh += a[j--];
+        }
+        return sumLow == sumHigh;
+    }
+
+    static void checkBisect(int[] data) {
+        System.out.println("Checking array balanced: " + Arrays.toString(data));
+        System.out.println("V1: " + checkBalanced(data));
+        System.out.println("V2: " + checkBalancedSinglePass(data));
+    }
+
     public static void task6() {
-        System.out.println(hasEqualSumBisection(new int[] {2, 2, 2, 1, 2, 10, 1}));
-        System.out.println(hasEqualSumBisection(new int[] {2, 2, 2, 1, 2, 10, 3}));
+        System.out.println("\n= task6");
+        checkBisect(new int[] {2, 4, 2, 1, 2, 10, 1});
+        checkBisect(new int[] {2, 2, 2, 1, 2, 10, 1});
+        checkBisect(new int[] {2, 2, 2, 1, 2, 10, 3});
     }
 
     public static int euclidNod(int a, int b) {
@@ -117,6 +146,7 @@ public class Main {
     }
 
     public static void task7() {
+        System.out.println("\n= task7");
         checkRotate(new int[] {1, 2, 3, 4, 5, 6}, 0);
         checkRotate(new int[] {1, 2, 3, 4, 5, 6}, -1);
         checkRotate(new int[] {1, 2, 3, 4, 5, 6}, 1);
