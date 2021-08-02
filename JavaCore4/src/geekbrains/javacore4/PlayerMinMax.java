@@ -12,7 +12,7 @@ class PlayerMinMax implements Player {
         if (game.isGameOver())
             return game.isDraw() ? 0 : game.getWinnerPlayer() == player ? 1 : -1;
 
-        Move[] lossDrawWin = new Move[3]; // храним найденные ходы, 0 - проигрышный, 1 - ничейный, 2 - победный
+        Move[] lossDrawWin = new Move[3]; // храним найденные ходы, [0] - проигрышный, [1] - ничейный, [2] - победный
         boolean weGo = player == game.getCurrentPlayer();
         for (int x = 1; x <= game.getMaxX(); ++x) {
             for (int y = 1; y <= game.getMaxY(); ++y) {
