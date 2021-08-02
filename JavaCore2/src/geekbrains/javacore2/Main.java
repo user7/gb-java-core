@@ -69,6 +69,8 @@ public class Main {
     }
 
     public static boolean checkBalanced(int[] a) {
+        if (a.length == 0)
+            return true;
         int[] sumBelowInc = new int[a.length];
         int[] sumAbove = new int[a.length];
         int sum;
