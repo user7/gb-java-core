@@ -1,8 +1,6 @@
 package geekbrains;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
+import java.util.Arrays;
 
 public class Main {
 
@@ -11,40 +9,39 @@ public class Main {
         test2();
     }
 
-    static void test1() {
-        System.out.println("*** test 1");
-        printUnique(new String[] {
-                "Alex",
-                "Brooks",
-                "Brooks",
-                "Sam",
-                "Mila",
-                "Mila",
-                "Brooks",
-                "Aisha",
-                "Alex",
-        });
+    public static void test2() {
+        System.out.println("*** test2");
+        compareBoxes(3, 2);
+        compareBoxes(30, 20);
+        compareBoxes(30, 19);
+        compareBoxes(30, 22);
     }
 
-    static void test2() {
-        System.out.println("\n*** test 2");
-        PhoneBook phoneBook = new PhoneBook();
-        phoneBook.add("Аня", "+7000");
-        phoneBook.add("Джон", "099");
-        phoneBook.add("Аня", "+7002");
-        phoneBook.add("Ингрид", "+999");
-        phoneBook.get("Аня");
-        phoneBook.get("Джон");
-        phoneBook.get("Карл");
+    static void compareBoxes(int apples, int oranges) {
+        Box<Apple> ba = new Box<>(new Apple(), apples);
+        Box<Orange> bo = new Box<>(new Orange(), oranges);
+        System.out.printf("в ящике яблок: %2d шт, в ящике апельсинов: %2d шт, вес равный: %s\n",
+                          apples, oranges, (ba.compare(bo) ? "ДА" : "НЕТ"));
     }
 
-    static void printUnique(String[] words) {
-        LinkedHashMap<String, Integer> counts = new LinkedHashMap<>();
-        for (String w : words)
-            counts.put(w, counts.getOrDefault(w, 0) + 1);
-        counts.forEach((key, value) -> {
-            System.out.println(key + " " + value);
-        });
+    public static void test1() {
+        System.out.println("*** test1");
+        testSwapIJ(new Integer[] {0, 1, 2, 3, 4}, 0, 3);
+        testSwapIJ(new String[] {"aa", "bb", "cc", "dd", "ee"}, 4, 3);
+        System.out.println();
     }
 
+    public static <E> void testSwapIJ(E[] array, int i, int j) {
+        System.out.print("swapIJ: " + Arrays.toString(array));
+        swapIJ(array, i, j);
+        System.out.println(" + swap(" + i + "," + j + ") -> " + Arrays.toString(array));
+    }
+
+    public static <E> void swapIJ(E[] array, int i, int j) {
+        if (i >= array.length || j >= array.length || i == j)
+            return;
+        E tmp = array[i];
+        array[i] = array[j];
+        array[j] = tmp;
+    }
 }
