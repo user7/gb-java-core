@@ -11,17 +11,30 @@ public class Main {
 
     public static void test2() {
         System.out.println("*** test2");
-        compareBoxes(3, 2);
-        compareBoxes(30, 20);
-        compareBoxes(30, 19);
-        compareBoxes(30, 22);
+
+        compareBoxes(new Box(new Apple(), 3), new Box(new Apple(), 3));
+        compareBoxes(new Box(new Apple(), 30), new Box(new Orange(), 30));
+        compareBoxes(new Box(new Apple(), 300), new Box(new Orange(), 200));
+
+        Box<Apple> ba30 = new Box<>(new Apple(), 30);
+        Box<Orange> bo1 = new Box<>(new Orange(), 8);
+        Box<Orange> bo2 = new Box<>(new Orange(), 12);
+
+        System.out.println("два маленьких ящика с апельсинами");
+        compareBoxes(ba30, bo1);
+        compareBoxes(ba30, bo2);
+
+        System.out.println("пересыпали всё во 2й ящик");
+        bo1.putToAnotherBox(bo2);
+        compareBoxes(ba30, bo1);
+        compareBoxes(ba30, bo2);
     }
 
-    static void compareBoxes(int apples, int oranges) {
-        Box<Apple> ba = new Box<>(new Apple(), apples);
-        Box<Orange> bo = new Box<>(new Orange(), oranges);
-        System.out.printf("в ящике яблок: %2d шт, в ящике апельсинов: %2d шт, вес равный: %s\n",
-                          apples, oranges, (ba.compare(bo) ? "ДА" : "НЕТ"));
+    static void compareBoxes(Box a, Box b) {
+        System.out.format("[%2$10s %1$3dшт] и [%4$10s %3$3dшт] равны по весу: %5$s\n",
+                          a.getSize(), a.getContentsName(),
+                          b.getSize(), b.getContentsName(),
+                          (a.compare(b) ? "ДА" : "НЕТ"));
     }
 
     public static void test1() {

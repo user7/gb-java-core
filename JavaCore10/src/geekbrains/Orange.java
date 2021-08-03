@@ -5,4 +5,9 @@ public class Orange extends Fruit {
     public double getWeight() {
         return 1.5;
     }
+
+    @Override
+    String getName() {
+        return "апельсины";
+    }
 }

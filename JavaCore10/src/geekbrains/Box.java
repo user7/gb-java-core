@@ -10,8 +10,16 @@ public class Box<E extends Fruit> {
             data.add(e);
     }
 
+    String getContentsName() {
+        return data.isEmpty() ? "<пусто>" : data.get(0).getName();
+    }
+
     void add(E e) {
         data.add(e);
+    }
+
+    public int getSize() {
+        return data.size();
     }
 
     double getWeight() {
@@ -26,5 +34,12 @@ public class Box<E extends Fruit> {
 
     boolean compare(Box<?> other) {
         return Math.abs(getWeight() - other.getWeight()) < 0.01;
+    }
+
+    public void putToAnotherBox(Box<E> other) {
+        for (E e: data) {
+            other.add(e);
+        }
+        data.clear();
     }
 }

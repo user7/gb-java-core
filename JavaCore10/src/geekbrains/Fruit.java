@@ -1,5 +1,6 @@
 package geekbrains;
 
 abstract class Fruit {
-    abstract public double getWeight();
+    abstract double getWeight();
+    abstract String getName();
 }
