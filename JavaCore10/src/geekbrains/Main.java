@@ -12,19 +12,19 @@ public class Main {
     public static void test2() {
         System.out.println("*** test2");
 
-        compareBoxes(new Box(new Apple(), 3), new Box(new Apple(), 3));
-        compareBoxes(new Box(new Apple(), 30), new Box(new Orange(), 30));
-        compareBoxes(new Box(new Apple(), 300), new Box(new Orange(), 200));
+        compareBoxes(new Box(Apple::new, 3), new Box(Apple::new, 3));
+        compareBoxes(new Box(Apple::new, 30), new Box(Orange::new, 30));
+        compareBoxes(new Box(Apple::new, 300), new Box(Orange::new, 200));
 
-        Box<Apple> ba30 = new Box<>(new Apple(), 30);
-        Box<Orange> bo1 = new Box<>(new Orange(), 8);
-        Box<Orange> bo2 = new Box<>(new Orange(), 12);
+        Box<Apple> ba30 = new Box(Apple::new, 30);
+        Box<Orange> bo1 = new Box(Orange::new, 8);
+        Box<Orange> bo2 = new Box(Orange::new, 12);
 
-        System.out.println("два маленьких ящика с апельсинами");
+        System.out.println("\nдва маленьких ящика с апельсинами");
         compareBoxes(ba30, bo1);
         compareBoxes(ba30, bo2);
 
-        System.out.println("пересыпали всё во 2й ящик");
+        System.out.println("\nпересыпали всё во 2й ящик");
         bo1.putToAnotherBox(bo2);
         compareBoxes(ba30, bo1);
         compareBoxes(ba30, bo2);

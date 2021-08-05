@@ -1,13 +1,14 @@
 package geekbrains;
 
 import java.util.ArrayList;
+import java.util.function.Supplier;
 
 public class Box<E extends Fruit> {
     private ArrayList<E> data = new ArrayList<>();
 
-    public Box(E e, int count) {
+    public Box(Supplier<E> s, int count) {
         while(count-- > 0)
-            data.add(e);
+            data.add(s.get());
     }
 
     String getContentsName() {
