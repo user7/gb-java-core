@@ -7,17 +7,23 @@ public class PhoneBook {
     private HashMap<String, ArrayList<String>> data = new HashMap<>();
 
     public void add(String name, String phone) {
-        ArrayList<String> entry = data.getOrDefault(name, new ArrayList<>());
-        entry.add(phone);
-        data.put(name, entry);
+        data.compute(name, (key, strings) -> {
+            if (strings == null)
+                strings = new ArrayList<>();
+            strings.add(phone);
+            return strings;
+        });
     }
 
     public void get(String name) {
-        ArrayList<String> entry = data.getOrDefault(name, new ArrayList<>());
-        System.out.println(name + ":");
-        for (String phone : entry) {
-            System.out.println(name + " " + phone);
+        ArrayList<String> phones = data.get(name);
+        if (phones == null) {
+            System.out.println(name + " отсутствует в книге");
+            return;
         }
-        System.out.println("--");
+        System.out.print(name + ":");
+        for (String phone : phones)
+            System.out.print(" " + phone);
+        System.out.println();
     }
 }
