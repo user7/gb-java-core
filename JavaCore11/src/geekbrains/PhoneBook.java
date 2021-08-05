@@ -7,11 +7,11 @@ public class PhoneBook {
     private HashMap<String, ArrayList<String>> data = new HashMap<>();
 
     public void add(String name, String phone) {
-        data.compute(name, (key, strings) -> {
-            if (strings == null)
-                strings = new ArrayList<>();
-            strings.add(phone);
-            return strings;
+        data.compute(name, (n, phones) -> {
+            if (phones == null)
+                phones = new ArrayList<>();
+            phones.add(phone);
+            return phones;
         });
     }
 
