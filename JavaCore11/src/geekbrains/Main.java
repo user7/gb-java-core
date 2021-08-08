@@ -26,6 +26,15 @@ public class Main {
         });
     }
 
+    static void printUnique(String[] words) {
+        LinkedHashMap<String, Integer> counts = new LinkedHashMap<>();
+        for (String w : words)
+            counts.merge(w, 1, Integer::sum);
+        counts.forEach((key, value) -> {
+            System.out.println(key + " " + value);
+        });
+    }
+
     static void test2() {
         System.out.println("\n*** test 2");
         PhoneBook phoneBook = new PhoneBook();
@@ -37,14 +46,4 @@ public class Main {
         phoneBook.get("Джон");
         phoneBook.get("Карл");
     }
-
-    static void printUnique(String[] words) {
-        LinkedHashMap<String, Integer> counts = new LinkedHashMap<>();
-        for (String w : words)
-            counts.put(w, counts.getOrDefault(w, 0) + 1);
-        counts.forEach((key, value) -> {
-            System.out.println(key + " " + value);
-        });
-    }
-
 }
