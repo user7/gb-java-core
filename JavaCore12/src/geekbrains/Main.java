@@ -8,15 +8,17 @@ public class Main {
     static final int h = size / 2;
 
     public static void main(String[] args) {
+        assert (size == h * 2);
+        // измеряем три раза для надёжности
         for (int i = 0; i < 3; ++i) {
-            test("один поток", Main::calcSingleThread);
+            test("один поток", arr -> calcAux(arr, 0, arr.length, 0));
             test("два потока с копированием", Main::calcTwoThreadsCopy);
             test("два потока без копирования", Main::calcTwoThreadsInplace);
             System.out.println();
         }
     }
 
-    static float[] compare;
+    static float[] savedResult;
 
     static void test(String name, Consumer<float[]> func) {
         long start = System.currentTimeMillis();
@@ -24,50 +26,50 @@ public class Main {
         Arrays.fill(arr, 1f);
         func.accept(arr);
         long stop = System.currentTimeMillis();
-        System.out.format("%30s : %7.2f", name, (stop - start) / 1000.);
-        if (compare == null)
-            compare = arr;
-        boolean bad = false;
+        System.out.format("%30s : %7.3f", name, (stop - start) / 1000.);
+        if (savedResult == null)
+            savedResult = arr;
         for (int i = 0; i < arr.length; ++i)
-            if (Math.abs(arr[i] - compare[i]) > 0.0001) {
-                bad = true;
-                break;
+            if (Math.abs(arr[i] - savedResult[i]) > 0.0001) {
+                System.out.println(" результаты в позиции " + i + " не совпадают: " + arr[i] + " != " + savedResult[i]);
+                return;
             }
-        System.out.println(bad ? " ERROR" : " OK");
+        System.out.println(" ОК");
         //System.out.println(Arrays.toString(arr));
     }
 
-    static void calcAux(float[] arr, int from, int length, int adjustI) {
-        for (int i = from; i < from + length; ++i) {
-            int ia = i + adjustI;
-            arr[i] = (float) (arr[i] * Math.sin(0.2f + ia / 5) * Math.cos(0.2f + ia / 5) * Math.cos(0.4f + ia / 2));
+    static void calcAux(float[] arr, int start, int length, int startEffectiveIndex) {
+        // В вычислении нужно использовать не индекс в (возможно временном) массиве,
+        // а "индекс элемента в изначальном массиве", т.е. когда обрабатываем вторую
+        // половину индекс элемента j меняется от 0 до h, а эффективный индекс i
+        // от h до size. Это нужно при расчёте верхней половины значений, в нижней
+        // половине i и j совпадают.
+        int i = startEffectiveIndex;
+        for (int j = start; j < start + length; ++j, ++i) {
+            arr[j] = (float) (arr[j] * Math.sin(0.2f + i / 5) * Math.cos(0.2f + i / 5) * Math.cos(0.4f + i / 2));
         }
     }
 
-    static void calcSingleThread(float[] arr) {
-        calcAux(arr, 0, 2 * h, 0);
-    }
-
     static void calcTwoThreadsCopy(float[] arr) {
-        float[][] tmps = new float[][]{new float[h], new float[h]};
+        float[][] tmpArrs = new float[][]{new float[h], new float[h]};
         Thread[] threads = new Thread[2];
         for (int i = 0; i < threads.length; ++i) {
-            float[] tmp = tmps[i];
-            int start = i * h;
-            System.arraycopy(arr, start, tmp, 0, h);
-            threads[i] = new Thread(() -> Main.calcAux(tmp, 0, h, start));
+            float[] tmpArr = tmpArrs[i];
+            System.arraycopy(arr, i * h, tmpArr, 0, h);
+            int effectiveIndex = i * h; // компилятор не любит не-final вычисления в лямбде
+            threads[i] = new Thread(() -> Main.calcAux(tmpArr, 0, h, effectiveIndex));
             threads[i].start();
         }
         joinAll(threads);
         for (int i = 0; i < 2; ++i)
-            System.arraycopy(tmps[i], 0, arr, i * h, h);
+            System.arraycopy(tmpArrs[i], 0, arr, i * h, h);
     }
 
     static void calcTwoThreadsInplace(float[] arr) {
         Thread[] threads = new Thread[2];
         for (int i = 0; i < 2; ++i) {
-            int start = i * h;
-            threads[i] = new Thread(() -> Main.calcAux(arr, start, h, 0));
+            int effectiveIndex = i * h; // компилятор не любит не-final вычисления в лямбде
+            threads[i] = new Thread(() -> Main.calcAux(arr, effectiveIndex, h, effectiveIndex));
             threads[i].start();
         }
         joinAll(threads);
