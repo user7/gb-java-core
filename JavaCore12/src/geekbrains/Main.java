@@ -24,7 +24,9 @@ public class Main {
                 new TestEntry("два потока с копировнием", Main::calcTwoThreadsCopy, new ArrayList<>()),
                 new TestEntry("два потока без копирования", Main::calcTwoThreadsInplace, new ArrayList<>()),
                 new TestEntry("один поток с оптимизацией", Main::calcSingleThreadOptimized, new ArrayList<>()),
+                new TestEntry("один поток и анролл", Main::calcSingleThreadOptimizedUnroll, new ArrayList<>()),
                 new TestEntry("два потока с оптимизацией", Main::calcTwoThreadsOptimized, new ArrayList<>()),
+                new TestEntry("два потока и анролл", Main::calcTwoThreadsOptimizedUnroll, new ArrayList<>()),
         };
 
         // понадобится для проверки, что результаты работы всех реализация одинаковы
@@ -157,6 +159,55 @@ public class Main {
         for (int i = 0; i < 2; ++i) {
             int effectiveIndex = i * h; // компилятор не любит не-final вычисления в лямбде
             threads[i] = new Thread(() -> Main.calcAuxOptimized(arr, effectiveIndex, h, effectiveIndex));
+            threads[i].start();
+        }
+        joinAll(threads);
+    }
+
+    // попробуем ручной анроллинг цикла
+    static void calcAuxOptimizedUnroll(float[] arr, int start, int length, int startEffectiveIndex) {
+        assert(length % 10 == 0);
+        assert(startEffectiveIndex % 10 == 0);
+        int i = startEffectiveIndex;
+        int x2 = i / 5 * 2;
+        int y = i / 2;
+        final float a2 = 0.4f;
+        for (int j = start; j < start + length; j += 10, x2 += 4, y += 5) {
+            double exprX2s0 = Math.sin(a2 + (x2 + 0)) / 2;
+            double exprYs0 = Math.cos(a2 + (y + 0));
+            double mul0 = exprX2s0 * exprYs0;
+            arr[j + 0] = (float) (arr[j + 0] * mul0);
+            arr[j + 1] = (float) (arr[j + 1] * mul0);
+            double exprYs2 = Math.cos(a2 + (y + 1));
+            double mul2 = exprX2s0 * exprYs2;
+            arr[j + 2] = (float) (arr[j + 2] * mul2);
+            arr[j + 3] = (float) (arr[j + 3] * mul2);
+            double exprYs4 = Math.cos(a2 + (y + 2));
+            double mul4 = exprX2s0 * exprYs4;
+            arr[j + 4] = (float) (arr[j + 4] * mul4);
+            double exprX2s5 = Math.sin(a2 + (x2 + 2)) / 2;
+            double mul5 = exprX2s5 * exprYs4;
+            arr[j + 5] = (float) (arr[j + 5] * mul5);
+            double exprYs6 = Math.cos(a2 + (y + 3));
+            double mul6 = exprX2s5 * exprYs6;
+            arr[j + 6] = (float) (arr[j + 6] * mul6);
+            arr[j + 7] = (float) (arr[j + 7] * mul6);
+            double exprYs8 = Math.cos(a2 + (y + 4));
+            double mul8 = exprX2s5 * exprYs8;
+            arr[j + 8] = (float) (arr[j + 8] * mul8);
+            arr[j + 9] = (float) (arr[j + 9] * mul8);
+        }
+    }
+
+    static void calcSingleThreadOptimizedUnroll(float[] arr) {
+        calcAuxOptimizedUnroll(arr, 0, arr.length, 0);
+    }
+
+    static void calcTwoThreadsOptimizedUnroll(float[] arr) {
+        Thread[] threads = new Thread[2];
+        for (int i = 0; i < threads.length; ++i) {
+            int effectiveIndex = i * h; // компилятор не любит не-final вычисления в лямбде
+            threads[i] = new Thread(() -> Main.calcAuxOptimizedUnroll(arr, effectiveIndex, h, effectiveIndex));
             threads[i].start();
         }
         joinAll(threads);
