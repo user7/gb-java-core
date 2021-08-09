@@ -7,26 +7,29 @@ import java.util.Comparator;
 import java.util.function.Consumer;
 
 public class Main {
-    static final int size = 10000000;
+    static final int size = 20000000;
     static final int h = size / 2;
+
+    record TestEntry(String name, Consumer<float[]> func, ArrayList<Long> measures) {
+        Long medianTime() {
+            Collections.sort(measures);
+            return (measures.get(measures.size() / 2) + measures.get((measures.size() + 1) / 2)) / 2;
+        }
+    }
 
     public static void main(String[] args) {
         assert (size == h * 2);
-        record TestEntry(String name, Consumer<float[]> func, ArrayList<Long> measures) {
-            Long medianTime() {
-                Collections.sort(measures);
-                return (measures.get(measures.size() / 2) + measures.get((measures.size() + 1) / 2)) / 2;
-            }
-        }
+
         // список тестируемых алгоритмов
+        int xt = 0;
         TestEntry[] tests = new TestEntry[]{
-                new TestEntry("один поток", Main::calcSingleThread, new ArrayList<>()),
-                new TestEntry("два потока с копировнием", Main::calcTwoThreadsCopy, new ArrayList<>()),
-                new TestEntry("два потока без копирования", Main::calcTwoThreadsInplace, new ArrayList<>()),
-                new TestEntry("один поток с оптимизацией", Main::calcSingleThreadOptimized, new ArrayList<>()),
-                new TestEntry("один поток и анролл", Main::calcSingleThreadOptimizedUnroll, new ArrayList<>()),
-                new TestEntry("два потока с оптимизацией", Main::calcTwoThreadsOptimized, new ArrayList<>()),
-                new TestEntry("два потока и анролл", Main::calcTwoThreadsOptimizedUnroll, new ArrayList<>()),
+                mkt("простой", Main::calcSimple, 0),
+                mkt("простой", Main::calcSimple, 1),
+                mkt("простой", Main::calcSimple, 2),
+                mkt("кэширование триг. ф-ций", Main::calcOptimized, 0),
+                mkt("анроллинг", Main::calcUnroll, 0),
+                mkt("анроллинг+чит", Main::calcUnrollCheat, 0),
+                mkt("анроллинг+чит", Main::calcUnrollCheat, 2),
         };
 
         // понадобится для проверки, что результаты работы всех реализация одинаковы
@@ -48,10 +51,10 @@ public class Main {
                 if (savedResult == null)
                     savedResult = arr;
                 for (int j = 0; j < arr.length; ++j)
-                    if (Math.abs(arr[j] - savedResult[j]) > 0.0001) {
+                    if (Math.abs(arr[j] - savedResult[j]) > 0.005) {
                         System.out.println("Ошибка, результаты в позиции " + j + " не совпадают: " + arr[j] + ", " +
                                 savedResult[j]);
-                        return;
+                        //break;
                     }
             }
         }
@@ -61,7 +64,7 @@ public class Main {
         Long tmax = tests[0].medianTime();
         for (var test : tests) {
             Long t = test.medianTime();
-            System.out.format("%30s, медианное время %1.3fс, скорость x%.2f\n",
+            System.out.format("%30s, медианное время %7.3fс, скорость x%.2f\n",
                     test.name,
                     t / 1000.,
                     (float) tmax / t
@@ -69,7 +72,60 @@ public class Main {
         }
     }
 
-    static void calcAux(float[] arr, int start, int length, int startingEffectiveIndex) {
+    @FunctionalInterface
+    public interface CalcInterface {
+        void accept(float[] arr, int start, int length, int startingEffectiveIndex);
+    }
+
+    static TestEntry mkt(String name, CalcInterface calc, int extraThreads) {
+        return new TestEntry(
+                name + (extraThreads == 0 ? "" : extraThreads == 1 ? ", +1 тред" : ", +2 треда"),
+                mktFunc(calc, extraThreads),
+                new ArrayList<>()
+        );
+    }
+
+    static Consumer<float[]> mktFunc(CalcInterface calc, int extraThreads) {
+        switch (extraThreads) {
+            case 0:
+                return arr -> calc.accept(arr, 0, arr.length, 0);
+
+            case 1: // "полтора треда", создаём только один дополнительный, вторую половину обрабатываем в основном
+                return arr -> {
+                    Thread t = new Thread(() -> calc.accept(arr, 0, h, 0));
+                    t.start();
+                    calc.accept(arr, h, h, h);
+                    try {
+                        t.join();
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                };
+
+            case 2:
+                return arr -> {
+                    Thread[] threads = new Thread[2];
+                    for (int i = 0; i < threads.length; ++i) {
+                        int effectiveIndex = i * h; // компилятор не любит не-final вычисления в лямбде
+                        threads[i] = new Thread(() -> calc.accept(arr, effectiveIndex, h, effectiveIndex));
+                        threads[i].start();
+                    }
+                    for (var t : threads) {
+                        try {
+                            t.join();
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                };
+
+            default:
+                throw new IllegalArgumentException("неподдерживаемое число дополнительных тредов " + extraThreads);
+        }
+    }
+
+    // простой последовательны подсчёт по формуле
+    static void calcSimple(float[] arr, int start, int length, int startingEffectiveIndex) {
         // В вычислении нужно использовать не индекс в (возможно временном) массиве,
         // а "индекс элемента в изначальном массиве", т.е. когда обрабатываем вторую
         // половину индекс элемента j меняется от 0 до h, а эффективный индекс i
@@ -81,45 +137,8 @@ public class Main {
         }
     }
 
-    static void calcSingleThread(float[] arr) {
-        calcAux(arr, 0, arr.length, 0);
-    }
-
-    static void calcTwoThreadsCopy(float[] arr) {
-        float[][] tmpArrs = new float[][]{new float[h], new float[h]};
-        Thread[] threads = new Thread[2];
-        for (int i = 0; i < threads.length; ++i) {
-            float[] tmpArr = tmpArrs[i];
-            System.arraycopy(arr, i * h, tmpArr, 0, h);
-            int effectiveIndex = i * h; // компилятор не любит не-final вычисления в лямбде
-            threads[i] = new Thread(() -> Main.calcAux(tmpArr, 0, h, effectiveIndex));
-            threads[i].start();
-        }
-        joinAll(threads);
-        for (int i = 0; i < 2; ++i)
-            System.arraycopy(tmpArrs[i], 0, arr, i * h, h);
-    }
-
-    static void calcTwoThreadsInplace(float[] arr) {
-        Thread[] threads = new Thread[2];
-        for (int i = 0; i < 2; ++i) {
-            int effectiveIndex = i * h; // компилятор не любит не-final вычисления в лямбде
-            threads[i] = new Thread(() -> Main.calcAux(arr, effectiveIndex, h, effectiveIndex));
-            threads[i].start();
-        }
-        joinAll(threads);
-    }
-
-    static void joinAll(Thread[] threads) {
-        for (var t : threads) {
-            try {
-                t.join();
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-        }
-    }
-
+    // Оптимизированная версия
+    //
     // 1. упростим формулу, так нам вычислять на один синус меньше:
     //    x = trunc {i / 5}
     //    y = trunc {i / 2}
@@ -131,7 +150,7 @@ public class Main {
     //    считать sin(2a + 2x) в 5 раз реже,
     //    считать cos(2a + y) в 2 раза реже
     //
-    static void calcAuxOptimized(float[] arr, int start, int length, int startEffectiveIndex) {
+    static void calcOptimized(float[] arr, int start, int length, int startEffectiveIndex) {
         int i = startEffectiveIndex;
         int prevX = -1, prevY = -1;
         double prevXSinHalved = 0, prevYCos = 0;
@@ -150,24 +169,10 @@ public class Main {
         }
     }
 
-    static void calcSingleThreadOptimized(float[] arr) {
-        calcAuxOptimized(arr, 0, arr.length, 0);
-    }
-
-    static void calcTwoThreadsOptimized(float[] arr) {
-        Thread[] threads = new Thread[2];
-        for (int i = 0; i < 2; ++i) {
-            int effectiveIndex = i * h; // компилятор не любит не-final вычисления в лямбде
-            threads[i] = new Thread(() -> Main.calcAuxOptimized(arr, effectiveIndex, h, effectiveIndex));
-            threads[i].start();
-        }
-        joinAll(threads);
-    }
-
-    // попробуем ручной анроллинг цикла
-    static void calcAuxOptimizedUnroll(float[] arr, int start, int length, int startEffectiveIndex) {
-        assert(length % 10 == 0);
-        assert(startEffectiveIndex % 10 == 0);
+    // Попробуем ручной анроллинг цикла
+    static void calcUnroll(float[] arr, int start, int length, int startEffectiveIndex) {
+        assert (length % 10 == 0);
+        assert (startEffectiveIndex % 10 == 0);
         int i = startEffectiveIndex;
         int x2 = i / 5 * 2;
         int y = i / 2;
@@ -199,18 +204,57 @@ public class Main {
         }
     }
 
-    static void calcSingleThreadOptimizedUnroll(float[] arr) {
-        calcAuxOptimizedUnroll(arr, 0, arr.length, 0);
-    }
+    // Читерский анроллинг, чтобы считать меньше выражений вида sin(q - 2) и cos(r + -2..2), используя формулы
+    // суммы и значения sin/cos для -2..2, которые можно вычислить однократно на весь цикл. Поскольку умножение быстрее
+    // тригонометрии, то ускорение заметное. К сожалению, иногда этот метод даёт результат отличающийся от посчитанного
+    // напрямую больше чем на 0.01, не вполне понятно почему так. Ошибки распределены неравномерно, особенно большая
+    // ошибка возникает в элементе 16777216 при подсчёте от центра с поправкой -2..+2, или в элементе 16777218
+    // при подсчёте от начала с поправкой +1..+4 (старый вариант). Примеры аномалий:
+    //
+    // Ошибка, результаты в позиции 1048578 не совпадают: -9.0533524E-4, 0.0064106667
+    // Ошибка, результаты в позиции 1048579 не совпадают: -9.0533524E-4, 0.0064106667
+    // Ошибка, результаты в позиции 16777216 не совпадают: 0.49849874, 0.45015603
+    // Ошибка, результаты в позиции 16777217 не совпадают: 0.49849874, 0.45015603
+    // Ошибка, результаты в позиции 16777218 не совпадают: 0.24708061, 0.42479157
+    // Ошибка, результаты в позиции 16777219 не совпадают: 0.24708061, 0.42479157
+    //
+    static void calcUnrollCheat(float[] arr, int start, int length, int startEffectiveIndex) {
+        assert (length % 10 == 0);
+        assert (startEffectiveIndex % 10 == 0);
+        int i = startEffectiveIndex;
+        int x2 = i / 5 * 2;
+        int y = i / 2;
+        float a2 = 0.4f;
+        double sin1 = Math.sin(1), cos1 = Math.cos(1);
+        double sin2 = Math.sin(2), cos2 = Math.cos(2);
+        for (int j = start; j < start + length; j += 10, x2 += 4, y += 5) {
+            double xs5 = Math.sin(a2 + (x2 + 2)), xc5 = Math.cos(a2 + (x2 + 2));
+            double xs0 = xs5 * cos2 - xc5 * sin2;
 
-    static void calcTwoThreadsOptimizedUnroll(float[] arr) {
-        Thread[] threads = new Thread[2];
-        for (int i = 0; i < threads.length; ++i) {
-            int effectiveIndex = i * h; // компилятор не любит не-final вычисления в лямбде
-            threads[i] = new Thread(() -> Main.calcAuxOptimizedUnroll(arr, effectiveIndex, h, effectiveIndex));
-            threads[i].start();
+            double yc4 = Math.cos(a2 + (y + 2)), ys4 = Math.sin(a2 + (y + 2));
+            double yc0 = yc4 * cos2 + ys4 * sin2;
+            double yc2 = yc4 * cos1 + ys4 * sin1;
+            double yc6 = yc4 * cos1 - ys4 * sin1;
+            double yc8 = yc4 * cos2 - ys4 * sin2;
+
+            double mul0 = xs0 * yc0 / 2;
+            double mul2 = xs0 * yc2 / 2;
+            double mul4 = xs0 * yc4 / 2;
+            double mul5 = xs5 * yc4 / 2;
+            double mul6 = xs5 * yc6 / 2;
+            double mul8 = xs5 * yc8 / 2;
+
+            arr[j + 0] = (float) (arr[j + 0] * mul0);
+            arr[j + 1] = (float) (arr[j + 1] * mul0);
+            arr[j + 2] = (float) (arr[j + 2] * mul2);
+            arr[j + 3] = (float) (arr[j + 3] * mul2);
+            arr[j + 4] = (float) (arr[j + 4] * mul4);
+            arr[j + 5] = (float) (arr[j + 5] * mul5);
+            arr[j + 6] = (float) (arr[j + 6] * mul6);
+            arr[j + 7] = (float) (arr[j + 7] * mul6);
+            arr[j + 8] = (float) (arr[j + 8] * mul8);
+            arr[j + 9] = (float) (arr[j + 9] * mul8);
         }
-        joinAll(threads);
     }
 
 }
