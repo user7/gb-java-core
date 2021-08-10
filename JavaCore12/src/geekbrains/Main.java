@@ -4,127 +4,179 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.function.Consumer;
+import java.util.function.BiConsumer;
 
 public class Main {
-    static final int size = 20000000;
+    static final int size = 100000000;
     static final int h = size / 2;
 
-    record TestEntry(String name, Consumer<float[]> func, ArrayList<Long> measures) {
-        Long medianTime() {
-            Collections.sort(measures);
-            return (measures.get(measures.size() / 2) + measures.get((measures.size() + 1) / 2)) / 2;
-        }
-    }
-
-    public static void main(String[] args) {
-        assert (size == h * 2);
-
-        // список тестируемых алгоритмов
-        int xt = 0;
-        TestEntry[] tests = new TestEntry[]{
-                mkt("простой", Main::calcSimple, 0),
-                mkt("простой", Main::calcSimple, 1),
-                mkt("простой", Main::calcSimple, 2),
-                mkt("кэширование триг. ф-ций", Main::calcOptimized, 0),
-                mkt("анроллинг", Main::calcUnroll, 0),
-                mkt("анроллинг+чит", Main::calcUnrollCheat, 0),
-                mkt("анроллинг+чит", Main::calcUnrollCheat, 2),
-        };
-
-        // понадобится для проверки, что результаты работы всех реализация одинаковы
-        float[] savedResult = null;
-
-        // измеряем три раза для надёжности
-        for (int i = 1; i <= 5; ++i) {
-            System.out.println("\nпрогон " + i + ":");
-            for (var t : tests) {
-                float[] arr = new float[size];
-                Arrays.fill(arr, 1f);
-                long start = System.currentTimeMillis();
-                t.func.accept(arr);
-                long stop = System.currentTimeMillis();
-                t.measures.add(stop - start);
-                System.out.format("%30s  %7.3fс\n", t.name, (stop - start) / 1000.);
-
-                // проверяем, что результат работы разных реализаций одинаковый
-                if (savedResult == null)
-                    savedResult = arr;
-                for (int j = 0; j < arr.length; ++j)
-                    if (Math.abs(arr[j] - savedResult[j]) > 0.005) {
-                        System.out.println("Ошибка, результаты в позиции " + j + " не совпадают: " + arr[j] + ", " +
-                                savedResult[j]);
-                        //break;
-                    }
-            }
-        }
-
-        System.out.println("\nрезультаты:");
-        Arrays.sort(tests, Comparator.comparingLong(TestEntry::medianTime).reversed());
-        Long tmax = tests[0].medianTime();
-        for (var test : tests) {
-            Long t = test.medianTime();
-            System.out.format("%30s, медианное время %7.3fс, скорость x%.2f\n",
-                    test.name,
-                    t / 1000.,
-                    (float) tmax / t
-            );
-        }
-    }
-
+    // интерфейс расчета диапазона для сравнения различных реализаций формулы
     @FunctionalInterface
     public interface CalcInterface {
         void accept(float[] arr, int start, int length, int startingEffectiveIndex);
     }
 
-    static TestEntry mkt(String name, CalcInterface calc, int extraThreads) {
-        return new TestEntry(
-                name + (extraThreads == 0 ? "" : extraThreads == 1 ? ", +1 тред" : ", +2 треда"),
-                mktFunc(calc, extraThreads),
-                new ArrayList<>()
-        );
-    }
+    enum Strategy {
+        ST_SIMPLE("1 поток", Main::strategySingleThread),
+        ST_COPY_2T("+2 потока c копир.", Main::strategyTwoThreadsCopy),
+        ST_INPLACE_2T("+2 потока", Main::strategyTwoThreadsInplace),
+        ST_INPLACE_HT("+1 поток", Main::strategyHelperThread);
 
-    static Consumer<float[]> mktFunc(CalcInterface calc, int extraThreads) {
-        switch (extraThreads) {
-            case 0:
-                return arr -> calc.accept(arr, 0, arr.length, 0);
+        final String name;
+        final BiConsumer<CalcInterface, float[]> func;
+        Strategy(String name, BiConsumer<CalcInterface, float[]> func) {
+            this.name = name;
+            this.func = func;
+        }
+    };
 
-            case 1: // "полтора треда", создаём только один дополнительный, вторую половину обрабатываем в основном
-                return arr -> {
-                    Thread t = new Thread(() -> calc.accept(arr, 0, h, 0));
-                    t.start();
-                    calc.accept(arr, h, h, h);
-                    try {
-                        t.join();
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    }
-                };
+    enum Calculator {
+        CALC_SIMPLE("простой расчёт", Main::calcSimple),
+        CALC_CACHED("кэш + синус 2x", Main::calcOptimized),
+        CALC_UNROLL("анроллинг по 10", Main::calcUnroll),
+        CALC_CHEEKY("анроллинг с л.т.", Main::calcUnrollLocalTrig);
 
-            case 2:
-                return arr -> {
-                    Thread[] threads = new Thread[2];
-                    for (int i = 0; i < threads.length; ++i) {
-                        int effectiveIndex = i * h; // компилятор не любит не-final вычисления в лямбде
-                        threads[i] = new Thread(() -> calc.accept(arr, effectiveIndex, h, effectiveIndex));
-                        threads[i].start();
-                    }
-                    for (var t : threads) {
-                        try {
-                            t.join();
-                        } catch (InterruptedException e) {
-                            e.printStackTrace();
-                        }
-                    }
-                };
-
-            default:
-                throw new IllegalArgumentException("неподдерживаемое число дополнительных тредов " + extraThreads);
+        final String name;
+        final CalcInterface func;
+        Calculator(String name, CalcInterface func) {
+            this.name = name;
+            this.func = func;
         }
     }
 
-    // простой последовательны подсчёт по формуле
+    // тест состоит из стратегии, калькулятора и хранилища статистики
+    record TestEntry(
+            Strategy strategy,
+            Calculator calculator,
+            ArrayList<Long> measures  // время работы на каждый прогон теста
+    )
+    {
+        TestEntry(Strategy strategy, Calculator calculator) {
+            this(strategy, calculator, new ArrayList<>());
+        }
+
+        // медианное время по всем прогонам
+        Long medianTime() {
+            Collections.sort(measures);
+            int s = measures.size();
+            Long a = measures.get((s - 1) / 2);
+            Long b = measures.get(s / 2);
+            return (a + b) / 2;
+        }
+
+        String fullName() {
+            return calculator.name + (strategy.name.isEmpty() ? "" : ", " + strategy.name);
+        }
+    }
+
+    public static void main(String[] args) {
+        testThreading();
+    }
+
+    static void testThreading() {
+        assert (size == h * 2);
+
+        // создаём тесты
+        ArrayList<TestEntry> tests = new ArrayList<>();
+        tests.add(new TestEntry(Strategy.ST_SIMPLE, Calculator.CALC_SIMPLE));        // первый метод из ДЗ
+        tests.add(new TestEntry(Strategy.ST_COPY_2T, Calculator.CALC_SIMPLE));       // второй метод из ДЗ, с тредами
+        // tests.add(new TestEntry(Strategy.ST_INPLACE_HT, Calculator.CALC_SIMPLE));    // +1 тред, без копирования
+        // tests.add(new TestEntry(Strategy.ST_INPLACE_HT, Calculator.CALC_CACHED));    // +1, ускоренная версия формулы
+        tests.add(new TestEntry(Strategy.ST_INPLACE_HT, Calculator.CALC_UNROLL));
+        tests.add(new TestEntry(Strategy.ST_INPLACE_HT, Calculator.CALC_CHEEKY));
+
+        // понадобится для проверки, что результаты работы всех реализация одинаковы
+        float[] savedResult = null;
+
+        // измеряем несколько раз для надёжности
+        for (int i = 1; i <= 3; ++i) {
+            System.out.println("\nпрогон " + i + ":");
+            for (var t : tests) {
+                float[] arr = new float[size];
+                Arrays.fill(arr, 1f);
+                long start = System.currentTimeMillis();
+                t.strategy.func.accept(t.calculator.func, arr);
+                long stop = System.currentTimeMillis();
+                t.measures.add(stop - start);
+                System.out.format("%50s  %7.3fс\n", t.fullName(), (stop - start) / 1000.);
+
+                // проверяем, что результат работы разных реализаций одинаковый
+                if (savedResult == null)
+                    savedResult = arr;
+                for (int j = 0; j < arr.length; ++j)
+                    if (Math.abs(arr[j] - savedResult[j]) > 0.0001) {
+                        System.out.println("Ошибка, результаты в позиции " + j + " не совпадают: " + arr[j] + ", " +
+                                savedResult[j]);
+                        break;
+                    }
+            }
+        }
+
+        System.out.println("\nрезультаты:\n");
+        PrettyTable pt = new PrettyTable();
+        pt.addColumns("стратегия", "%s", "алгоритм", "%s", "время", "%7.3fс", "скорость", "x%.2f");
+        tests.sort(Comparator.comparingLong(TestEntry::medianTime).reversed());
+        Long tmax = tests.get(0).medianTime();
+        for (var test : tests) {
+            Long t = test.medianTime();
+            pt.addRow(
+                test.strategy.name,
+                test.calculator.name,
+                t / 1000.,
+                (float) tmax / t
+            );
+        }
+        pt.print();
+    }
+
+    static void strategySingleThread(CalcInterface calc, float[] arr) {
+        calc.accept(arr, 0, arr.length, 0);
+    }
+
+    static void strategyTwoThreadsCopy(CalcInterface calc, float[] arr) {
+        float[] a1 = new float[h];
+        System.arraycopy(arr, 0, a1, 0, h);
+        Thread t1 = new Thread(() -> calc.accept(a1, 0, h, 0));
+        t1.start();
+        float[] a2 = new float[h];
+        System.arraycopy(arr, h, a2, 0, h);
+        Thread t2 = new Thread(() -> calc.accept(a2, 0, h, h));
+        t2.start();
+        try {
+            t1.join();
+            t2.join();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        System.arraycopy(a1, 0, arr, 0, h);
+        System.arraycopy(a2, 0, arr, h, h);
+    }
+
+    static void strategyTwoThreadsInplace(CalcInterface calc, float[] arr) {
+        Thread t1 = new Thread(() -> calc.accept(arr, 0, h, 0));
+        Thread t2 = new Thread(() -> calc.accept(arr, h, h, h));
+        t1.start();
+        t2.start();
+        try {
+            t1.join();
+            t2.join();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+
+    static void strategyHelperThread(CalcInterface calc, float[] arr) {
+        Thread t1 = new Thread(() -> calc.accept(arr, 0, h, 0));
+        t1.start();
+        calc.accept(arr, h, h, h);
+        try {
+            t1.join();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+
+     // простой последовательный подсчёт по формуле
     static void calcSimple(float[] arr, int start, int length, int startingEffectiveIndex) {
         // В вычислении нужно использовать не индекс в (возможно временном) массиве,
         // а "индекс элемента в изначальном массиве", т.е. когда обрабатываем вторую
@@ -133,22 +185,22 @@ public class Main {
         // половине i и j совпадают.
         int i = startingEffectiveIndex;
         for (int j = start; j < start + length; ++j, ++i) {
-            arr[j] = (float) (arr[j] * Math.sin(0.2f + i / 5) * Math.cos(0.2f + i / 5) * Math.cos(0.4f + i / 2));
+            arr[j] = (float) (arr[j] * (Math.sin(0.2 + i / 5) * Math.cos(0.2 + i / 5) * Math.cos(0.4 + i / 2)));
         }
     }
 
-    // Оптимизированная версия
+    // Оптимизированная версия.
     //
-    // 1. упростим формулу, так нам вычислять на один синус меньше:
-    //    x = trunc {i / 5}
-    //    y = trunc {i / 2}
-    //    a = 0.2
+    // 1. Упростим формулу, чтобы вычислять на один косинус меньше. Обозначим
+    //      x = (int) (i / 5)
+    //      y = (int) (i / 2)
+    //      a = 0.2f
+    //    тогда
+    //      sin(a + x) * cos(a + x) * cos(2a + y) = 0.5 * sin(2a + 2x) * cos(2a + y)
     //
-    //    sin(a + x) * cos(a + x) * cos(2a + y) = 0.5 * sin(2a + 2x) * cos(2a + y)
-    //
-    // 2. будем также кэшировать уже найденные sin и cos, это позволит
-    //    считать sin(2a + 2x) в 5 раз реже,
-    //    считать cos(2a + y) в 2 раза реже
+    // 2. Будем также кэшировать уже найденные sin и cos, это позволит:
+    //    - считать sin(2a + 2x) в 5 раз реже
+    //    - считать cos(2a + y) в 2 раза реже
     //
     static void calcOptimized(float[] arr, int start, int length, int startEffectiveIndex) {
         int i = startEffectiveIndex;
@@ -158,11 +210,11 @@ public class Main {
             int x = i / 5;
             int y = i / 2;
             if (x != prevX) {
-                prevXSinHalved = 0.5 * Math.sin(0.4f + 2 * x);
+                prevXSinHalved = 0.5 * Math.sin(0.4 + 2 * x);
                 prevX = x;
             }
             if (y != prevY) {
-                prevYCos = Math.cos(0.4f + y);
+                prevYCos = Math.cos(0.4 + y);
                 prevY = y;
             }
             arr[j] = (float) (arr[j] * prevXSinHalved * prevYCos);
@@ -176,7 +228,7 @@ public class Main {
         int i = startEffectiveIndex;
         int x2 = i / 5 * 2;
         int y = i / 2;
-        final float a2 = 0.4f;
+        double a2 = 0.4;
         for (int j = start; j < start + length; j += 10, x2 += 4, y += 5) {
             double exprX2s0 = Math.sin(a2 + (x2 + 0)) / 2;
             double exprYs0 = Math.cos(a2 + (y + 0));
@@ -204,34 +256,53 @@ public class Main {
         }
     }
 
-    // Читерский анроллинг, чтобы считать меньше выражений вида sin(q - 2) и cos(r + -2..2), используя формулы
-    // суммы и значения sin/cos для -2..2, которые можно вычислить однократно на весь цикл. Поскольку умножение быстрее
-    // тригонометрии, то ускорение заметное. К сожалению, иногда этот метод даёт результат отличающийся от посчитанного
-    // напрямую больше чем на 0.01, не вполне понятно почему так. Ошибки распределены неравномерно, особенно большая
-    // ошибка возникает в элементе 16777216 при подсчёте от центра с поправкой -2..+2, или в элементе 16777218
-    // при подсчёте от начала с поправкой +1..+4 (старый вариант). Примеры аномалий:
+    // Анроллинг с локальным расчетом тригонометрических функций. Чтобы считать меньше выражений вида sin(q - 2) и
+    // cos(r + -2..2), используем формулы синуса и косинуса суммы. Наример, sin(x - 2) = sin(x) cos(2) - cos(x) sin(2).
+    // Если синус и косинус x и двойки известны, то вычисление sin(x - 2) заменяется на 2 умножения и 1 вычитание.
+    // Тригонометрические функции считать сложнее, поэтому если сократить их число, то программа будет работать быстрее.
+    // Посчитаем сколько тригонометрических функций можно сократить. Пусть i = 5 (mod 10), тогда для расчёта результата
+    // в десяти точках {i - 5, i - 4, ..., i + 4} понадобится вычислить четыре значения тригонометрических функций:
     //
-    // Ошибка, результаты в позиции 1048578 не совпадают: -9.0533524E-4, 0.0064106667
-    // Ошибка, результаты в позиции 1048579 не совпадают: -9.0533524E-4, 0.0064106667
-    // Ошибка, результаты в позиции 16777216 не совпадают: 0.49849874, 0.45015603
-    // Ошибка, результаты в позиции 16777217 не совпадают: 0.49849874, 0.45015603
-    // Ошибка, результаты в позиции 16777218 не совпадают: 0.24708061, 0.42479157
-    // Ошибка, результаты в позиции 16777219 не совпадают: 0.24708061, 0.42479157
+    //   sin x, cos x, sin y, cos y
     //
-    static void calcUnrollCheat(float[] arr, int start, int length, int startEffectiveIndex) {
+    //   где x = 0.4 + floor(i / 5) * 2, y = 0.4 + floor(i / 2). Искомая функция будет выражена через эти четыре
+    //   значения, а также через значения sin 1, sin 2, cos 1 и cos 2, которые вычисляются вне цикла:
+    //
+    //   f(i - 5) = .5 * sin (x - 2) * cos(y - 2)
+    //   f(i - 4) = .5 * sin (x - 2) * cos(y - 2)
+    //   f(i - 3) = .5 * sin (x - 2) * cos(y - 1)
+    //   f(i - 2) = .5 * sin (x - 2) * cos(y - 1)
+    //   f(i - 1) = .5 * sin (x - 2) * cos(y + 0)
+    //   f(i + 0) = .5 * sin x * cos(y + 0)
+    //   f(i + 1) = .5 * sin x * cos(y + 1)
+    //   f(i + 2) = .5 * sin x * cos(y + 1)
+    //   f(i + 3) = .5 * sin x * cos(y + 2)
+    //   f(i + 4) = .5 * sin x * cos(y + 2)
+    //
+    // Если считать напрямую, то пришлось бы посчитать все неповторяющиеся тригонометрические функции из таблицы, т.е.
+    // 2 синуса и 5 косинусов, всего 7 функций против 4х в нашем решении. Взамен добавится умножений и сложений.
+    // Эксперементально метод даёт ускорение примерно в 1.7 раз, что близко к 7/4. Теоретически можно увеличить шаг
+    // анролла например до 20 и считать только 4 триг. функции на 20 точек, вместо обычных 14. Число умножений и
+    // сложений будет расти линейно, поэтому ускорение приблизится к 14/4 = 3.5. Увеличивая шаг анролла можно продолжать
+    // исключать тригонометрию до тех пор, пока не начнут доминировать умножения, полагаю ещё в 10-50 таким образом
+    // ускорить можно.
+    //
+    static void calcUnrollLocalTrig(float[] arr, int start, int length, int startEffectiveIndex) {
         assert (length % 10 == 0);
         assert (startEffectiveIndex % 10 == 0);
         int i = startEffectiveIndex;
         int x2 = i / 5 * 2;
         int y = i / 2;
-        float a2 = 0.4f;
+        double a2 = 0.4;
         double sin1 = Math.sin(1), cos1 = Math.cos(1);
         double sin2 = Math.sin(2), cos2 = Math.cos(2);
         for (int j = start; j < start + length; j += 10, x2 += 4, y += 5) {
-            double xs5 = Math.sin(a2 + (x2 + 2)), xc5 = Math.cos(a2 + (x2 + 2));
+            double xbase = a2 + 2 + x2;
+            double ybase = a2 + 2 + y;
+            double xs5 = Math.sin(xbase), xc5 = Math.cos(xbase);
             double xs0 = xs5 * cos2 - xc5 * sin2;
 
-            double yc4 = Math.cos(a2 + (y + 2)), ys4 = Math.sin(a2 + (y + 2));
+            double yc4 = Math.cos(ybase), ys4 = Math.sin(ybase);
             double yc0 = yc4 * cos2 + ys4 * sin2;
             double yc2 = yc4 * cos1 + ys4 * sin1;
             double yc6 = yc4 * cos1 - ys4 * sin1;
