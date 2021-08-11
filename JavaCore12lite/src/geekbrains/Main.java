@@ -13,6 +13,8 @@ public class Main {
         testCalc("рабочий тред помогает основному, без копирования", Main::workerHelperThread);
     }
 
+    static float[] savedResult;
+
     static void testCalc(String algo, Consumer<float[]> worker) {
         float[] arr = new float[size];
         Arrays.fill(arr, 1);
@@ -20,6 +22,14 @@ public class Main {
         worker.accept(arr);
         long stop = System.currentTimeMillis();
         System.out.format("%50s  %7.3fс\n", algo, (stop - start) / 1000.);
+        if (savedResult == null)
+            savedResult = arr;
+        for (int i = 0; i < arr.length; ++i)
+            if (Math.abs(savedResult[i] - arr[i]) > 0.0001) {
+                System.out.println("Ошибка, результат не совпадает с эталоном в позиции " + i
+                                    + ": " + arr[i] + " != " + savedResult[i]);
+                break;
+            }
     }
 
     static void workerSingleThread(float[] arr) {
