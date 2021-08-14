@@ -68,7 +68,7 @@ class Car implements Runnable {
         for (int i = 0; i < race.getStages().size(); i++) {
             race.getStages().get(i).go(this);
         }
-        if (race.finished() == 0)
+        if (race.rankFinished() == 0)
             System.out.println("!!! " + name + " ПОБЕДИЛ !!!");
         Main.countdownFinished.countDown();
     }
@@ -133,7 +133,7 @@ class Tunnel extends Stage {
 
 class Race {
     private ArrayList<Stage> stages;
-    int rank = 0;
+    private int rank = 0;
 
     public ArrayList<Stage> getStages() {
         return stages;
@@ -143,7 +143,7 @@ class Race {
         this.stages = new ArrayList<>(Arrays.asList(stages));
     }
 
-    public synchronized int finished() {
+    public synchronized int rankFinished() {
         return rank++;
     }
 }
