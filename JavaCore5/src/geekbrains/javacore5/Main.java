@@ -24,8 +24,8 @@ class Employee {
     public void print() {
         System.out.println("Сотрудник: " + name);
         System.out.println("Должность: " + position);
-        System.out.println("    email: " + email);
-        System.out.println("  телефон: " + phone);
+        System.out.println("    Email: " + email);
+        System.out.println("  Телефон: " + phone);
         System.out.println(" Зарплата: " + salary);
         System.out.println("  Возраст: " + age);
     }
