@@ -18,7 +18,12 @@ public class PrettyTable {
             System.out.format("| %" + getWidth(ci) + "s ", columns.get(ci).title);
             w += getWidth(ci) + 3;
         }
-        System.out.println("|\n|" + "-".repeat(w) + "|");
+        System.out.println("|");
+
+        for (int ci = 0; ci < columns.size(); ++ci)
+            System.out.printf("|%s", "-".repeat(getWidth(ci) + 2));
+        System.out.println("|");
+
         for (var r : rows) {
             for (int ci = 0; ci < columns.size(); ++ci) {
                 System.out.format("| %" + getWidth(ci) + "s ", ci < r.size() && r.get(ci) != null ? r.get(ci) : "");

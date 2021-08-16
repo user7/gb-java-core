@@ -79,11 +79,11 @@ public class Main {
         // создаём тесты
         ArrayList<TestEntry> tests = new ArrayList<>();
         tests.add(new TestEntry(Strategy.ST_SIMPLE, Calculator.CALC_SIMPLE));        // первый метод из ДЗ
-        tests.add(new TestEntry(Strategy.ST_COPY_2T, Calculator.CALC_SIMPLE));       // второй метод из ДЗ, с тредами
-        // tests.add(new TestEntry(Strategy.ST_INPLACE_HT, Calculator.CALC_SIMPLE));    // +1 тред, без копирования
-        // tests.add(new TestEntry(Strategy.ST_INPLACE_HT, Calculator.CALC_CACHED));    // +1, ускоренная версия формулы
-        tests.add(new TestEntry(Strategy.ST_INPLACE_HT, Calculator.CALC_UNROLL));
-        tests.add(new TestEntry(Strategy.ST_INPLACE_HT, Calculator.CALC_CHEEKY));
+        // tests.add(new TestEntry(Strategy.ST_COPY_2T, Calculator.CALC_SIMPLE));       // второй метод из ДЗ, с тредами
+        tests.add(new TestEntry(Strategy.ST_INPLACE_HT, Calculator.CALC_SIMPLE));    // +1 тред, без копирования
+        tests.add(new TestEntry(Strategy.ST_SIMPLE, Calculator.CALC_CACHED));    // +1, ускоренная версия формулы
+        tests.add(new TestEntry(Strategy.ST_SIMPLE, Calculator.CALC_UNROLL));
+        tests.add(new TestEntry(Strategy.ST_SIMPLE, Calculator.CALC_CHEEKY));
 
         // понадобится для проверки, что результаты работы всех реализация одинаковы
         float[] savedResult = null;
@@ -257,7 +257,7 @@ public class Main {
     }
 
     // Анроллинг с локальным расчетом тригонометрических функций. Чтобы считать меньше выражений вида sin(q - 2) и
-    // cos(r + -2..2), используем формулы синуса и косинуса суммы. Наример, sin(x - 2) = sin(x) cos(2) - cos(x) sin(2).
+    // cos(r + -2..2), используем формулы синуса и косинуса суммы. Например, sin(x - 2) = sin(x) cos(2) - cos(x) sin(2).
     // Если синус и косинус x и двойки известны, то вычисление sin(x - 2) заменяется на 2 умножения и 1 вычитание.
     // Тригонометрические функции считать сложнее, поэтому если сократить их число, то программа будет работать быстрее.
     // Посчитаем сколько тригонометрических функций можно сократить. Пусть i = 5 (mod 10), тогда для расчёта результата
@@ -272,20 +272,19 @@ public class Main {
     //   f(i - 4) = .5 * sin (x - 2) * cos(y - 2)
     //   f(i - 3) = .5 * sin (x - 2) * cos(y - 1)
     //   f(i - 2) = .5 * sin (x - 2) * cos(y - 1)
-    //   f(i - 1) = .5 * sin (x - 2) * cos(y + 0)
-    //   f(i + 0) = .5 * sin x * cos(y + 0)
-    //   f(i + 1) = .5 * sin x * cos(y + 1)
-    //   f(i + 2) = .5 * sin x * cos(y + 1)
-    //   f(i + 3) = .5 * sin x * cos(y + 2)
-    //   f(i + 4) = .5 * sin x * cos(y + 2)
+    //   f(i - 1) = .5 * sin (x - 2) * cos y
+    //   f(i + 0) = .5 * sin x       * cos y
+    //   f(i + 1) = .5 * sin x       * cos(y + 1)
+    //   f(i + 2) = .5 * sin x       * cos(y + 1)
+    //   f(i + 3) = .5 * sin x       * cos(y + 2)
+    //   f(i + 4) = .5 * sin x       * cos(y + 2)
     //
     // Если считать напрямую, то пришлось бы посчитать все неповторяющиеся тригонометрические функции из таблицы, т.е.
     // 2 синуса и 5 косинусов, всего 7 функций против 4х в нашем решении. Взамен добавится умножений и сложений.
-    // Эксперементально метод даёт ускорение примерно в 1.7 раз, что близко к 7/4. Теоретически можно увеличить шаг
+    // Экспериментально метод даёт ускорение примерно в 1.7 раз, что близко к 7/4. Теоретически можно увеличить шаг
     // анролла например до 20 и считать только 4 триг. функции на 20 точек, вместо обычных 14. Число умножений и
     // сложений будет расти линейно, поэтому ускорение приблизится к 14/4 = 3.5. Увеличивая шаг анролла можно продолжать
-    // исключать тригонометрию до тех пор, пока не начнут доминировать умножения, полагаю ещё в 10-50 таким образом
-    // ускорить можно.
+    // исключать тригонометрию до тех пор, пока не начнут доминировать умножения.
     //
     static void calcUnrollLocalTrig(float[] arr, int start, int length, int startEffectiveIndex) {
         assert (length % 10 == 0);
