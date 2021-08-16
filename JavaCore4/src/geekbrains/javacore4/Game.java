@@ -96,7 +96,6 @@ class Game {
             else
                 System.out.println("игрок " + currentPlayer + "(" + mark[currentPlayer] + ") выиграл!");
         }
-        System.out.println("--");
     }
 
     // если ход корректный, то делает ход от имени currentPlayer,
@@ -105,9 +104,9 @@ class Game {
         if (gameOver)
             return false; // нельзя сделать ход, игра уже закончена
         if (x < 1 || x > maxX || y < 1 || y > maxY)
-            return false; // некоррентный ход за пределы поля
+            return false; // некорректный ход за пределы поля
         if (at(x, y) != 0)
-            return false; // некоррентный ход, клетка занята
+            return false; // некорректный ход, клетка занята
 
         setAt(x, y, currentPlayer);
         if (checkWinAt(x, y)) {
@@ -117,7 +116,7 @@ class Game {
         else
             currentPlayer = 3 - currentPlayer; // 1 <-> 2
 
-        if (!gameOver && cellsUsed == maxX * maxY) { // никто не выиграл, но клетки пончились - ничья
+        if (!gameOver && cellsUsed == maxX * maxY) { // никто не выиграл, но клетки кончились - ничья
             gameOver = true;
             winnerPlayer = 0;
         }

@@ -64,7 +64,11 @@ public class Main {
             game.print();
             if (game.isGameOver())
                 return;
+            long start = System.currentTimeMillis();
             players[game.getCurrentPlayer() - 1].makeMove(game);
+            long time = System.currentTimeMillis() - start;
+            System.out.printf("время хода %.3fс\n", time / 1000.);
+            System.out.println("--");
         }
     }
 
@@ -87,9 +91,10 @@ public class Main {
         System.out.println(" n[ew] N W P1 P2 X - новая игра NxN клеток,");
         System.out.println("                     требуется выстроить W камней в ряд для победы,");
         System.out.println("                     P1 и P2 задают тип игроков 1 и 2 соответсвенно:");
-        System.out.println("                        h  - human, человек, управление с консоли");
-        System.out.println("                        r  - random, AI делающий случайные ходы");
-        System.out.println("                        m  - AI реализующий алгоритм минимакс (работает медленно)");
+        System.out.println("                        h   - human, человек, управление с консоли");
+        System.out.println("                        r   - random, AI делающий случайные ходы");
+        System.out.println("                        mms - AI реализующий алгоритм минимакс (наивный)");
+        System.out.println("                        mm  - AI реализующий алгоритм минимакс (ускоренный)");
         System.out.println("                     X если больше 1, то провести X матчей и показать сумму");
         System.out.println();
         System.out.println("    пример: n 3 3 h r - крестики-нолики, первый игрок человек, второй - рандомный AI");
